@@ -67,6 +67,8 @@
 struct State : public Viewer::State {
   // If true, just print debugging info and exit.
   bool PrintFBDebugInfoAndExit;
+  // If true, prints current page number on exit.
+  bool PrintPageOnExit;
   // If true, exit main event loop.
   bool Exit;
   // If true (default), requires refresh after current command.
@@ -104,6 +106,7 @@ struct State : public Viewer::State {
   State()
       : Viewer::State(),
         PrintFBDebugInfoAndExit(false),
+        PrintPageOnExit(false),
         Exit(false),
         Render(true),
         DocumentType(AUTO_DETECT),
@@ -511,6 +514,7 @@ static const char* HELP_STRING =
     "\t--fb=/path/to/dev     Specify output framebuffer device.\n"
     "\t--password=xx, -P xx  Unlock PDF document with the given password.\n"
     "\t--page=N, -p N        Open page N on start up.\n"
+    "\t--print_page_on_exit  Print current page number to stdout on exit\n"
     "\t--zoom=N, -z N        Set initial zoom to N. E.g., -z 150 sets \n"
     "\t                      zoom level to 150%.\n"
     "\t--zoom_to_fit         Start in automatic zoom-to-fit mode.\n"
@@ -549,6 +553,7 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
     ZOOM_TO_FIT,
     FB,
     PRINT_FB_DEBUG_INFO_AND_EXIT,
+    PRINT_PAGE_ON_EXIT,
   };
   // Command line options.
   static const option LongFlags[] = {
@@ -556,6 +561,7 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
       {"fb", true, nullptr, FB},
       {"password", true, nullptr, 'P'},
       {"page", true, nullptr, 'p'},
+      {"print_page_on_exit", false, nullptr, PRINT_PAGE_ON_EXIT},
       {"zoom", true, nullptr, 'z'},
       {"zoom_to_width", false, nullptr, ZOOM_TO_WIDTH},
       {"zoom_to_fit", false, nullptr, ZOOM_TO_FIT},
@@ -644,6 +650,9 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
       }
       case PRINT_FB_DEBUG_INFO_AND_EXIT:
         state->PrintFBDebugInfoAndExit = true;
+        break;
+      case PRINT_PAGE_ON_EXIT:
+        state->PrintPageOnExit = true;
         break;
       default:
         fprintf(stderr, "Try \"-h\" for help.\n");
@@ -891,6 +900,10 @@ int main(int argc, char* argv[]) {
   state.FramebufferInst.reset();
   usleep(100 * 1000);
   endwin();
+
+  if(state.PrintPageOnExit) {
+    printf("%d\n", state.Page);
+  }
 
   return EXIT_SUCCESS;
 }
