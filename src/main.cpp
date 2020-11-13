@@ -49,6 +49,7 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -68,7 +69,7 @@ struct State : public Viewer::State {
   // If true, just print debugging info and exit.
   bool PrintFBDebugInfoAndExit;
   // If true, prints current page number on exit.
-  bool PrintPageOnExit;
+  bool SavePageToBookmarkFile;
   // If true, exit main event loop.
   bool Exit;
   // If true (default), requires refresh after current command.
@@ -89,6 +90,8 @@ struct State : public Viewer::State {
   // Password for the input file. If no password is provided, this will be
   // nullptr.
   std::unique_ptr<std::string> FilePassword;
+  // Path to bookmark file
+  std::string BookmarkFile;
   // Framebuffer device.
   std::string FramebufferDevice;
   // Document instance.
@@ -106,13 +109,14 @@ struct State : public Viewer::State {
   State()
       : Viewer::State(),
         PrintFBDebugInfoAndExit(false),
-        PrintPageOnExit(false),
+        SavePageToBookmarkFile(false),
         Exit(false),
         Render(true),
         DocumentType(AUTO_DETECT),
         RenderCacheSize(Viewer::DEFAULT_RENDER_CACHE_SIZE),
         FilePath(""),
         FilePassword(),
+        BookmarkFile("/home/dan/.cache/bookmarks/pdf-bookmarks"),
         FramebufferDevice(Framebuffer::DEFAULT_FRAMEBUFFER_DEVICE),
         OutlineViewInst(nullptr),
         SearchViewInst(nullptr),
@@ -553,7 +557,7 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
     ZOOM_TO_FIT,
     FB,
     PRINT_FB_DEBUG_INFO_AND_EXIT,
-    PRINT_PAGE_ON_EXIT,
+    SAVE_PAGE_TO_BOOKMARK_FILE,
   };
   // Command line options.
   static const option LongFlags[] = {
@@ -561,7 +565,7 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
       {"fb", true, nullptr, FB},
       {"password", true, nullptr, 'P'},
       {"page", true, nullptr, 'p'},
-      {"print_page_on_exit", false, nullptr, PRINT_PAGE_ON_EXIT},
+      {"save_to_bookmark", false, nullptr, SAVE_PAGE_TO_BOOKMARK_FILE},
       {"zoom", true, nullptr, 'z'},
       {"zoom_to_width", false, nullptr, ZOOM_TO_WIDTH},
       {"zoom_to_fit", false, nullptr, ZOOM_TO_FIT},
@@ -651,8 +655,8 @@ static void ParseCommandLine(int argc, char* argv[], State* state) {
       case PRINT_FB_DEBUG_INFO_AND_EXIT:
         state->PrintFBDebugInfoAndExit = true;
         break;
-      case PRINT_PAGE_ON_EXIT:
-        state->PrintPageOnExit = true;
+      case SAVE_PAGE_TO_BOOKMARK_FILE:
+        state->SavePageToBookmarkFile = true;
         break;
       default:
         fprintf(stderr, "Try \"-h\" for help.\n");
@@ -901,8 +905,16 @@ int main(int argc, char* argv[]) {
   usleep(100 * 1000);
   endwin();
 
-  if(state.PrintPageOnExit) {
-    printf("%d\n", state.Page);
+  if(state.SavePageToBookmarkFile) {
+    FILE * pFile;
+    pFile = fopen (state.BookmarkFile.c_str(),"a+");
+    std::string bookmark = get_current_dir_name();
+    bookmark += "/" + state.FilePath;
+    bookmark += " " + std::to_string(state.Page) + "\n";
+    if (pFile!=NULL) {
+      fputs (bookmark.c_str(), pFile);
+      fclose (pFile);
+    }
   }
 
   return EXIT_SUCCESS;
